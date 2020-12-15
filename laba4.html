@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <head>
-	<title>Practical Asignment 4 BerkunovVR</title>
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>PAS4</title>
 	<script src='three.js'></script>
 	<script src="threex-artoolkitsource.js"></script>
 	<script src="threex-artoolkitcontext.js"></script>
@@ -16,9 +16,14 @@
 
 <script>
 
-let scene, camera, renderer, arToolkitSrc, arToolkitCtxt, marker1, marker2;
+var scene, camera, renderer;
 
+var arToolkitSource, arToolkitContext;
 
+var markerRoot1, markerRoot2;
+
+initialize();
+animate();
 
 function initialize()
 {
@@ -63,29 +68,29 @@ function initialize()
 
 
         const material = new THREE.MeshBasicMaterial({
-            color: 0x93D2DB,
+            color: 0xFFFffF,
             side: THREE.DoubleSide,
             wireframe: true
-          
+            // filled: true
         });
 
         surface = new THREE.Mesh(geometry, material);
 
-	arToolkitSrc = new THREEx.ArToolkitSource({
+	arToolkitSource = new THREEx.ArToolkitSource({
 		sourceType : 'webcam',
 	});
 
 	function onResize()
 	{
-		arToolkitSrc.onResize()	
-		arToolkitSrc.copySizeTo(renderer.domElement)	
-		if ( arToolkitCtxt.arController !== null )
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if ( arToolkitContext.arController !== null )
 		{
-			arToolkitSrc.copySizeTo(arToolkitCtxt.arController.canvas)	
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
 		}	
 	}
 
-	arToolkitSrc.init(function onReady(){
+	arToolkitSource.init(function onReady(){
 		onResize()
 	});
 	
@@ -94,28 +99,25 @@ function initialize()
 	});
 	
 
-	arToolkitCtxt = new THREEx.ArToolkitContext({
+	arToolkitContext = new THREEx.ArToolkitContext({
 		cameraParametersUrl: 'camera_para.dat',
 		detectionMode: 'mono'
 	});
 	
 
-	arToolkitCtxt.init( function onCompleted(){
-		camera.projectionMatrix.copy( arToolkitCtxt.getProjectionMatrix() );
+	arToolkitContext.init( function onCompleted(){
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
 	});
 
 
-	marker1 = new THREE.Group();
+	markerRoot1 = new THREE.Group();
 	scene.add(markerRoot1);
-	let markerControls1 = new THREEx.ArMarkerControls(arToolkitCtxt, marker1, {
-		type: 'pattern', patternUrl: "pattern-heart.patt",
+	let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
+		type: 'pattern', patternUrl: "pattern-virich.patt",
 	})
 
 
-	marker1.add( surface );
-	
-	initialize();
-	animate();
+	markerRoot1.add( surface );
 
 }
 
@@ -126,11 +128,12 @@ function animate()
 	surface.rotation.x += 0.01;
     surface.rotation.y += 0.01;
     surface.rotation.z += 0.001;
-	if ( arToolkitSrc.ready !== false )
-		arToolkitCtxt.update( arToolkitSrc.domElement );
+	if ( arToolkitSource.ready !== false )
+		arToolkitContext.update( arToolkitSource.domElement );
 	renderer.render( scene, camera );
 }
 
 </script>
 </body>
 </html>
+
