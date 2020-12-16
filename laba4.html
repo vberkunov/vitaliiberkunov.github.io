@@ -46,24 +46,20 @@ function initialize()
 	renderer.domElement.style.left = '0px'
 	document.body.appendChild( renderer.domElement );
 
-	const a = 1.5;
-        const b = 3;
-        const c = 2;
-		const d = 2;
-		
-        var virich = function (t, v, vector) {
-            //
-            let grad1 = t * 2 * Math.PI;
-            let grad2 = v * 2 * Math.PI;
-            let f = (a * b) / Math.sqrt(((a ** 2) * (Math.sin(grad2)) ** 2) + ((b ** 2) * (Math.cos(grad2) ** 2)));
+	const a = 0.8;
+	const  p = 2.6;
 
-            vector.x = (Math.cos(grad2) / 2) * ((f * (1 + Math.cos(grad1))) + ((d ** 2 - c ** 2) * ((1 - Math.cos(grad1)) / f)));
-            vector.y = (Math.sin(grad2) / 2) * ((f * (1 + Math.cos(grad1))) + ((d ** 2 - c ** 2) * ((1 - Math.cos(grad1)) / f)));
-            vector.z = (Math.sin(grad1) / 2) * (f - ((d ** 2 - c ** 2) / f));
+	function doRevolutionOfParabola(u, v, target) {
+		let beta = v * 2 * Math.PI;
+		let x = u * Math.cos(beta);
+		let y = u * Math.sin(beta);
+		let z = Math.sqrt(2. * p * (u - a))
 
-        };
+		target.set(x, y, z)
 
-		const geometry = new THREE.ParametricGeometry(virich, 50, 50);
+	}
+
+		const geometry = new THREE.ParametricGeometry(doRevolutionOfParabola, 50, 50);
 
 
 
