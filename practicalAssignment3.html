@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="assignment.css">
+    <title>My third practical assignment</title>
+</head>
+<body>
+
+<div class=slider-container">
+    <input type="range" min="0" max="1" value="0.4" step="0.001" class="slider" id="slider">
+    <p class="sub_title">Value: <span id="value"></span></p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.js"></script>
+<script type="module">
+    import {DeviceOrientationControls} from "https://threejs.org/examples/jsm/controls/DeviceOrientationControls.js";
+    import {LinearFilter, Matrix3, Mesh, NearestFilter, OrthographicCamera, PlaneBufferGeometry, RGBAFormat, Scene, ShaderMaterial, StereoCamera, WebGLRenderTarget} from "https://threejs.org/build/three.module.js";
+
+    let renderer, scene, camera, surface, controls, effect;
+
+
+
+    function init() {
+        //my function of Virich
+
+        const a = 1.5;
+        const b = 3;
+        const c = 2;
+        const d = 2;
+        var virich = function (t, v, vector) {
+            //
+            let grad1 = t * 2 * Math.PI;
+            let grad2 = v * 2 * Math.PI;
+            let f = (a * b) / Math.sqrt(((a ** 2) * (Math.sin(grad2)) ** 2) + ((b ** 2) * (Math.cos(grad2) ** 2)));
+
+            vector.x = (Math.cos(grad2) / 2) * ((f * (1 + Math.cos(grad1))) + ((d ** 2 - c ** 2) * ((1 - Math.cos(grad1)) / f)));
+            vector.y = (Math.sin(grad2) / 2) * ((f * (1 + Math.cos(grad1))) + ((d ** 2 - c ** 2) * ((1 - Math.cos(grad1)) / f)));
+            vector.z = (Math.sin(grad1) / 2) * (f - ((d ** 2 - c ** 2) / f));
+
+        };
+
+
+        renderer = new THREE.WebGLRenderer({
+            antialias: true
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color('#343434');
+
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.z = 4;
+
+
+        effect = new AnaglyphEffect(renderer);
+        effect.setSize(window.innerWidth, window.innerHeight);
+
+        controls = new DeviceOrientationControls(camera, renderer.domElement)
+
+
+
+        const geometry = new THREE.ParametricGeometry(virich, 50, 50);
+
+
+
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xFFFffF,
+            side: THREE.DoubleSide,
+            wireframe: true
+            // filled: true
+        });
+
+        surface = new THREE.Mesh(geometry, material);
+
+        scene.add(surface);
+        effect = new AnaglyphEffect(renderer);
+        effect.setSize(window.innerWidth, window.innerHeight);
+
+
+
+    };
+
+    //Animation function
+
+    var animation = function() {
+        requestAnimationFrame(animation);
+        var rotateDegrees = getRotateDegrees();
+        if (rotateDegrees){
+            camera.position.x = rotateDegrees[0] * Math.PI / 180; //alfa
+            camera.position.y = rotateDegrees[1] * Math.PI / 180; //beta
+            camera.position.z = rotateDegrees[2] * Math.PI / 180; // gamma
+        }
+
+        controls.update();
+        effect.render(scene, camera);
+    };
+
+
+
+    //Slider
+
+    var slider = document.getElementById("slider");
+    var output = document.getElementById("value");
+    output.innerHTML = slider.value; // Display the default slider value
+
+    slider.oninput = function() {
+        output.innerHTML = this.value;
+        effect.changeEyeSep(slider.value);
+    }
+
+    function windowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        effect.setSize(window.innerWidth, window.innerHeight);
+
+    }
+
+    function getRotateDegrees() {
+        if (window.DeviceOrientationEvent) {
+            console.log("Device orientation is supported ");
+            var rotateDegrees = [0,0,0]
+            window.addEventListener('deviceorientation', (eventData) =>{
+                rotateDegrees.push(eventData.alpha)
+                rotateDegrees.push(eventData.beta)
+                rotateDegrees.push(eventData.gamma)
+
+            }, true)
+            return rotateDegrees
+        } else {
+            console.log("DeviceOrientetion is not supported");
+            return false
+        }
+    }
+
+    window.addEventListener('resize', windowResize, false);
+
+
+
+    //Anaglyph Effect
+
+    var AnaglyphEffect = function (renderer, width, height) {
+
+
+        this.colorMatrixLeft = new Matrix3().fromArray([
+            1.0671679973602295, -0.0016435992438346148, 0.0001777536963345483, // r out
+            -0.028107794001698494, -0.00019593400065787137, -0.0002875397040043026, // g out
+            -0.04279090091586113, 0.000015809757314855233, -0.00024287120322696865 // b out
+        ]);
+
+
+        this.colorMatrixRight = new Matrix3().fromArray([
+
+            -0.0355340838432312, -0.06440307199954987, 0.018319187685847282, // r out
+            -0.10269022732973099, 0.8079727292060852, -0.04835830628871918, // g out
+            0.0001224992738571018, -0.009558862075209618, 0.567823588848114 // b out
+
+        ]);
+
+        var _camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+        var _scene = new Scene();
+
+        var _stereo = new StereoCamera();
+
+
+        var _params = {minFilter: LinearFilter, magFilter: NearestFilter, format: RGBAFormat};
+
+        if (width === undefined) width = 512;
+        if (height === undefined) height = 512;
+
+        var _renderTargetL = new WebGLRenderTarget(width, height, _params);
+        var _renderTargetR = new WebGLRenderTarget(width, height, _params);
+
+        var _material = new ShaderMaterial({
+
+            uniforms: {
+
+                "mapLeft": {value: _renderTargetL.texture},
+                "mapRight": {value: _renderTargetR.texture},
+
+                "colorMatrixLeft": {value: this.colorMatrixLeft},
+                "colorMatrixRight": {value: this.colorMatrixRight}
+
+            },
+
+            vertexShader: [
+
+                "varying vec2 vUv;",
+
+                "void main() {",
+
+                "	vUv = vec2( uv.x, uv.y );",
+                "	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+                "}"
+
+            ].join("\n"),
+
+            fragmentShader: [
+
+                "uniform sampler2D mapLeft;",
+                "uniform sampler2D mapRight;",
+                "varying vec2 vUv;",
+
+                "uniform mat3 colorMatrixLeft;",
+                "uniform mat3 colorMatrixRight;",
+
+                // These functions implement sRGB linearization and gamma correction
+
+                "float lin( float c ) {",
+                "	return c <= 0.04045 ? c * 0.0773993808 :",
+                "			pow( c * 0.9478672986 + 0.0521327014, 2.4 );",
+                "}",
+
+                "vec4 lin( vec4 c ) {",
+                "	return vec4( lin( c.r ), lin( c.g ), lin( c.b ), c.a );",
+                "}",
+
+                "float dev( float c ) {",
+                "	return c <= 0.0031308 ? c * 12.92",
+                "			: pow( c, 0.41666 ) * 1.055 - 0.055;",
+                "}",
+
+
+                "void main() {",
+
+                "	vec2 uv = vUv;",
+
+                "	vec4 colorL = lin( texture2D( mapLeft, uv ) );",
+                "	vec4 colorR = lin( texture2D( mapRight, uv ) );",
+
+                "	vec3 color = clamp(",
+                "			colorMatrixLeft * colorL.rgb +",
+                "			colorMatrixRight * colorR.rgb, 0., 1. );",
+
+                "	gl_FragColor = vec4(",
+                "			dev( color.r ), dev( color.g ), dev( color.b ),",
+                "			max( colorL.a, colorR.a ) );",
+
+                "}"
+
+            ].join("\n")
+
+        });
+
+        var _mesh = new Mesh(new PlaneBufferGeometry(2, 2), _material);
+        _scene.add(_mesh);
+
+        this.setSize = function (width, height) {
+
+            renderer.setSize(width, height);
+
+            var pixelRatio = renderer.getPixelRatio();
+
+            _renderTargetL.setSize(width * pixelRatio, height * pixelRatio);
+            _renderTargetR.setSize(width * pixelRatio, height * pixelRatio);
+
+        };
+
+        this.changeEyeSep = function (newEyeSep) {
+            _stereo.eyeSep = newEyeSep;
+        }
+
+        this.render = function (scene, camera) {
+
+            var currentRenderTarget = renderer.getRenderTarget();
+
+            scene.updateMatrixWorld();
+
+            if (camera.parent === null) camera.updateMatrixWorld();
+
+            _stereo.update(camera);
+
+            renderer.setRenderTarget(_renderTargetL);
+            renderer.clear();
+            renderer.render(scene, _stereo.cameraL);
+
+            renderer.setRenderTarget(_renderTargetR);
+            renderer.clear();
+            renderer.render(scene, _stereo.cameraR);
+
+            renderer.setRenderTarget(null);
+            renderer.render(_scene, _camera);
+
+            renderer.setRenderTarget(currentRenderTarget);
+
+        };
+
+        this.dispose = function () {
+
+            if (_renderTargetL) _renderTargetL.dispose();
+            if (_renderTargetR) _renderTargetR.dispose();
+            if (_mesh) _mesh.geometry.dispose();
+            if (_material) _material.dispose();
+
+        };
+
+    };
+
+
+    init();
+    animation();
+
+</script>
+</body>
+</html>
